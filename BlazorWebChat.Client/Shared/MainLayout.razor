@@ -1,0 +1,50 @@
+﻿@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <div class="main">
+        @Body
+    </div>
+</div>
+
+<div id="launcher-script">
+    @*//todo *@
+    <div class="@(showChat ? "d-block" : "d-none")">
+        <iframe class="chat-iframe" @bind-src="chatIframeUrl" @bind-src:event="onclick" frameBorder="0" @onload="IFrameLoaded"></iframe>
+    </div>
+
+    @*//DOTO MOVE TO IFRAME*@
+    <div class="chat-laucnher-iframe">
+        <div class="chat-launcher" @onclick="ToggleChat">
+            open chat @*//TODO change to icon*@
+        </div>
+    </div>
+</div>
+
+@code { 
+    static bool showChat { get; set; }
+    private static string chatIframeUrl = string.Empty;
+
+    private void IFrameLoaded(ProgressEventArgs e)
+    {
+        Console.WriteLine("IFrame loaded");
+        //ad hide on load remove hide
+    }
+
+    public static void ToggleChat(MouseEventArgs obj)
+    {
+        if (!showChat)
+        {
+            showChat = true;
+            chatIframeUrl = "http://localhost:6836/chat";
+        }
+        else
+        {
+            showChat = false;
+            chatIframeUrl = "";
+        }
+    }
+}

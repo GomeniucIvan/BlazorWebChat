@@ -1,0 +1,221 @@
+﻿@page "/chat"
+@using BlazorWebChat.Shared
+@layout EmptyLayout
+@inject NavigationManager navigationManager
+
+<style>
+    app {
+        position: inherit;
+    }
+
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        -webkit-box-pack: start;
+        justify-content: flex-start;
+        position: absolute;
+        inset: 0px;
+        overflow: hidden;
+    }
+
+    .chat-header {
+        position: relative;
+        min-height: 75px;
+        color: white;
+        transition: height 160ms ease-out 0s;
+        background: linear-gradient(135deg, rgb(48, 71, 236) 0%, rgb(15, 34, 167) 100%);
+        height: 170px;
+    }
+
+    .chat-header-inner {
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        right: 0px;
+        padding: 20px 20px 54px 20px;
+        box-sizing: border-box;
+    }
+
+    .chat-header-inner-container {
+        transform: translateY(0px);
+        opacity: 1;
+    }
+
+    .chat-header-inner-container-logo {
+        height: 32px;
+        padding-bottom: 16px;
+    }
+
+    .chat-header-inner-container-logo img {
+        max-width: 100%;
+        max-height: 100%;
+        margin: auto 0px;
+        display: block;
+    }
+
+    .chat-header-inner-container-title {
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        font-size: 32px;
+        max-width: 296px;
+    }
+
+    .chat-header-inner-container-title > span {
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        color: rgb(255, 255, 255);
+        display: block;
+        line-height: 1.5em;
+    }
+
+    .chat-header-inner-container-logo {
+        height: 32px;
+        padding-bottom: 16px;
+    }
+
+    .chat-header-inner-container-description {
+        color: rgba(255, 255, 255, 0.7);
+        display: block;
+        font-size: 1em;
+        line-height: 1.5em;
+        overflow-wrap: break-word;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        font-family: "Helvetica Neue", "Apple Color Emoji", Helvetica, Arial, sans-serif;
+        font-size: 100%;
+        line-height: inherit;
+    }
+
+    .chat-footer {
+        overflow: auto;
+        resize: vertical;
+        width: 100%;
+        bottom: 0;
+        position: absolute;
+        display: flex;
+    }
+
+    .chat-footer textarea {
+        width: 100%;
+    }
+
+</style>
+
+<div class="chat-container">
+    <div class="chat-header">
+        <div class="chat-header-inner">
+            <div class="chat-header-inner-container">
+                <div class="chat-header-inner-container-logo">
+                    <span>logo</span>
+                </div>
+                <h1>
+                    <div class="chat-header-inner-container-title">
+                        <span>Привет</span>
+                    </div>
+                </h1>
+                <h2>
+                    <span class="chat-header-inner-container-description">description.</span>
+                </h2>
+            </div>
+        </div>
+    </div>
+    <div class="chat-body">
+        @foreach (var item in messages)
+        {
+            <div class="@item.CSS">
+                <div class="user">@item.Username</div>
+                <div class="msg">@item.Body</div>
+            </div>
+        }
+    </div>
+    <div class="chat-footer">
+        <textarea placeholder="Send a message…" @bind="@chatMessage"></textarea>
+        <button class="btn btn-outline-primary" @onclick="@SendAsync">Send</button>
+    </div>
+</div>
+
+@code {
+    // new message input
+    string chatMessage = null;
+
+    // list of messages in chat
+    List<Message> messages = new List<Message>();
+
+    ChatClient client = null;
+
+    async Task SendAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(chatMessage))
+        {
+            // send message to hub
+            await client.SendAsync(chatMessage);
+            // clear input box
+            chatMessage = "";
+        }
+    }
+
+    async Task ChatUser()
+    {
+        try
+        {
+            // remove old messages if any
+            messages.Clear();
+
+            // Create the chat client
+            string baseUrl = navigationManager.BaseUri;
+            client = new ChatClient("user", baseUrl);
+            // add an event handler for incoming messages
+            client.MessageReceived += MessageReceived;
+            // start the client
+            Console.WriteLine("Chat: chart starting...");
+            await client.StartAsync();
+            Console.WriteLine("Chat: chart started!");
+
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+            Console.WriteLine(e.StackTrace);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ChatUser();
+    }
+
+    void MessageReceived(object sender, MessageReceivedEventArgs e)
+    {
+        Console.WriteLine($"Blazor: receive {e.Username}: {e.Message}");
+        bool isMine = false;
+        if (!string.IsNullOrWhiteSpace(e.Username))
+        {
+            isMine = string.Equals(e.Username, "user", StringComparison.CurrentCultureIgnoreCase);
+        }
+
+        var newMsg = new Message(e.Username, e.Message, isMine);
+        messages.Add(newMsg);
+
+        // Inform blazor the UI needs updating
+        StateHasChanged();
+    }
+
+    class Message
+    {
+        public Message(string username, string body, bool mine)
+        {
+            Username = username;
+            Body = body;
+            Mine = mine;
+        }
+
+        public string Username { get; set; }
+        public string Body { get; set; }
+        public bool Mine { get; set; }
+
+        public string CSS => Mine ? "sent" : "received";
+    }
+}
